@@ -1,0 +1,288 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from ttkthemes import ThemedStyle
+import tkinter.font as tkFont
+import datetime
+import csv
+import os
+import hashlib
+import zipfile
+import shutil
+
+# Tambahkan impor messagebox
+from tkinter import messagebox
+
+# Daftar menu dan harga
+menu = {
+    "Minuman": {
+        "Es Teh": 5000,
+        "Es Jeruk": 6000,
+        "Es Campur": 10000,
+        "Es Kopi": 7000,
+        "Es Coklat": 12000
+    },
+    "Makanan": {
+        "Nasi Goreng": 15000,
+        "Mie Goreng": 12000,
+        "Sate Ayam": 18000,
+        "Bakso": 15000,
+        "Nasi Campur": 15000
+    }
+}
+
+# Stok awal
+stok = {
+    "Es Teh": 100,
+    "Es Jeruk": 80,
+    "Es Campur": 50,
+    "Es Kopi": 70,
+    "Es Coklat": 60,
+    "Nasi Goreng": 30,
+    "Mie Goreng": 25,
+    "Sate Ayam": 40,
+    "Bakso": 60,
+    "Gorengan": 100
+}
+
+# Log aktivitas
+log_aktivitas = []
+
+# Fungsi untuk menambahkan pesanan
+def tambah_pesanan(kategori, item):
+    global total_harga
+    harga = menu[kategori][item]
+    if stok[item] > 0:
+        pesanan.insert(tk.END, f"{item}: Rp{harga:,}")
+        stok[item] -= 1
+        total_harga += harga
+        total_label.config(text=f"Total: Rp{total_harga:,}")
+        catat_log(f"{nama_pembeli.get()} memesan {item}")
+    else:
+        messagebox.showerror("Error", f"{item} sudah habis!")
+
+# Fungsi untuk menghapus pesanan
+def hapus_pesanan():
+    try:
+        index = pesanan.curselection()[0]
+        item = pesanan.get(index).split(": ")[0]
+        for kategori in menu:
+            if item in menu[kategori]:
+                stok[item] += 1
+                break
+        pesanan.delete(index)
+        update_total()
+        catat_log(f"{nama_pembeli.get()} menghapus {item} dari pesanan")
+    except IndexError:
+        pass
+
+# Fungsi untuk update total harga
+def update_total():
+    global total_harga
+    total_harga = 0
+    for item in pesanan.get(0, tk.END):
+        harga = int(item.split(": Rp")[1].replace(",", ""))
+        total_harga += harga
+    total_label.config(text=f"Total: Rp{total_harga:,}")
+
+# Fungsi untuk membayar
+def bayar():
+    global total_harga
+    pembayaran = uang_masuk.get()
+    try:
+        pembayaran = int(pembayaran.replace(",", ""))
+        if pembayaran >= total_harga:
+            kembalian = pembayaran - total_harga
+            struk = f"Tanggal: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            struk += f"Pembeli: {nama_pembeli.get()}\n\n"
+            struk += "Pesanan:\n"
+            for item in pesanan.get(0, tk.END):
+                struk += f"{item}\n"
+            struk += f"\nTotal: Rp{total_harga:,}\nBayar: Rp{pembayaran:,}\nKembalian: Rp{kembalian:,}"
+            messagebox.showinfo("Struk", struk)
+            simpan_transaksi(struk)
+            pesanan.delete(0, tk.END)
+            total_harga = 0
+            total_label.config(text="Total: Rp0")
+            uang_masuk.delete(0, tk.END)
+            catat_log(f"{nama_pembeli.get()} melakukan pembayaran sebesar Rp{pembayaran:,}")
+        else:
+            messagebox.showerror("Error", "Pembayaran tidak mencukupi!")
+    except ValueError:
+        messagebox.showerror("Error", "Masukkan pembayaran yang valid!")
+
+# Fungsi untuk menyimpan transaksi
+def simpan_transaksi(struk):
+    with open("transaksi.csv", "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([struk])
+
+# Fungsi untuk menampilkan laporan penjualan
+def laporan_penjualan():
+    laporan = tk.Toplevel(root)
+    laporan.title("Laporan Penjualan")
+    laporan.geometry("600x400")
+
+    teks = tk.Text(laporan, font=tkFont.Font(family="Helvetica", size=12))
+    teks.pack(fill="both", expand=True)
+
+    with open("transaksi.csv", "r") as file:
+        transaksi = file.readlines()
+        for struk in transaksi:
+            teks.insert(tk.END, struk)
+
+# Fungsi untuk menampilkan log aktivitas
+def lihat_log():
+    log_window = tk.Toplevel(root)
+    log_window.title("Log Aktivitas")
+    log_window.geometry("600x400")
+
+    teks = tk.Text(log_window, font=tkFont.Font(family="Helvetica", size=12))
+    teks.pack(fill="both", expand=True)
+
+    with open("log.txt", "r") as file:
+        log = file.readlines()
+        for entry in log:
+            teks.insert(tk.END, entry)
+
+# Fungsi untuk manajemen stok
+def manajemen_stok():
+    stok_window = tk.Toplevel(root)
+    stok_window.title("Manajemen Stok")
+    stok_window.geometry("400x400")
+
+    stok_listbox = tk.Listbox(stok_window, width=30, height=10)
+    stok_listbox.pack(pady=10)
+
+    for item, jumlah in stok.items():
+        stok_listbox.insert(tk.END, f"{item}: {jumlah}")
+
+    def update_stok():
+        selected_item = stok_listbox.get(tk.ACTIVE)
+        if selected_item:
+            item = selected_item.split(": ")[0]
+            update_window = tk.Toplevel(stok_window)
+            update_window.title(f"Update Stok {item}")
+            update_window.geometry("300x150")
+
+            jumlah_label = ttk.Label(update_window, text="Jumlah Stok:")
+            jumlah_label.pack(pady=5)
+
+            jumlah_entry = ttk.Entry(update_window)
+            jumlah_entry.pack(pady=5)
+
+            def simpan_update():
+                jumlah = jumlah_entry.get()
+                if jumlah.isdigit():
+                    stok[item] = int(jumlah)
+                    stok_listbox.delete(stok_listbox.curselection())
+                    stok_listbox.insert(tk.END, f"{item}: {jumlah}")
+                    catat_log(f"Pengguna {nama_pembeli.get()} mengupdate stok {item} menjadi {jumlah}")
+                    update_window.destroy()
+                else:
+                    messagebox.showerror("Error", "Jumlah stok harus berupa angka!")
+
+            simpan_button = ttk.Button(update_window, text="Simpan", command=simpan_update)
+            simpan_button.pack(pady=5)
+
+    update_button = ttk.Button(stok_window, text="Update Stok", command=update_stok)
+    update_button.pack(pady=10)
+
+# Fungsi untuk mencatat log aktivitas
+def catat_log(aktivitas):
+    log_aktivitas.append(f"{datetime.datetime.now()} - {aktivitas}")
+    with open("log.txt", "a") as file:
+        file.write(f"{log_aktivitas[-1]}\n")
+
+# Membuat jendela utama
+root = tk.Tk()
+root.title("Kasir Minuman & Makanan")
+root.geometry("1200x800")
+
+# Tema
+style = ThemedStyle(root)
+style.set_theme("clam")
+
+# Style untuk semua elemen
+style.configure(".", background="#f0f0f0", foreground="#000000")
+
+# Frame utama
+main_frame = ttk.Frame(root)
+main_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+# Frame menu
+menu_frame = ttk.LabelFrame(main_frame, text="Menu", labelanchor="n")
+menu_frame.pack(side=tk.LEFT, padx=20, pady=20, fill="both", expand=True)
+
+# Notebook untuk kategori menu
+menu_notebook = ttk.Notebook(menu_frame)
+menu_notebook.pack(fill="both", expand=True)
+
+# Tabs untuk kategori menu
+for kategori, items in menu.items():
+    tab = ttk.Frame(menu_notebook)
+    menu_notebook.add(tab, text=kategori)
+    for item, harga in items.items():
+        button = ttk.Button(tab, text=f"{item}: Rp{harga:,}", command=lambda x=kategori, y=item: tambah_pesanan(x, y))
+        button.pack(pady=5, fill="x")
+
+# Frame pesanan
+pesanan_frame = ttk.LabelFrame(main_frame, text="Pesanan", labelanchor="n")
+pesanan_frame.pack(side=tk.LEFT, padx=20, pady=20, fill="both", expand=True)
+
+# Listbox pesanan
+pesanan = tk.Listbox(pesanan_frame, width=30, font=tkFont.Font(family="Helvetica", size=12))
+pesanan.pack(side=tk.TOP, pady=10, fill="both", expand=True)
+
+# Tombol hapus pesanan
+hapus_button = ttk.Button(pesanan_frame, text="Hapus Pesanan", command=hapus_pesanan)
+hapus_button.pack(side=tk.BOTTOM, pady=5, fill="x")
+
+# Frame total dan pembayaran
+total_frame = ttk.LabelFrame(main_frame, text="Total & Pembayaran", labelanchor="n")
+total_frame.pack(side=tk.RIGHT, padx=20, pady=20, fill="both", expand=True)
+
+# Label total
+total_harga = 0
+total_label = ttk.Label(total_frame, text=f"Total: Rp{total_harga:,}", font=tkFont.Font(family="Helvetica", size=14))
+total_label.pack(pady=10)
+
+# Entry pembayaran
+uang_masuk_label = ttk.Label(total_frame, text="Pembayaran:")
+uang_masuk_label.pack()
+uang_masuk = ttk.Entry(total_frame)
+uang_masuk.pack(pady=5)
+
+# Tombol bayar
+bayar_button = ttk.Button(total_frame, text="Bayar", command=bayar)
+bayar_button.pack(pady=10)
+
+# Entry nama pembeli
+nama_pembeli_label = ttk.Label(total_frame, text="Nama Pembeli:")
+nama_pembeli_label.pack()
+nama_pembeli = ttk.Entry(total_frame)
+nama_pembeli.pack(pady=5)
+
+# Tombol manajemen stok
+stok_button = ttk.Button(main_frame, text="Manajemen Stok", command=manajemen_stok)
+stok_button.pack(side=tk.BOTTOM, pady=10)
+
+# Menu bar
+menu_bar = tk.Menu(root)
+root.config(menu=menu_bar)
+
+# Menu file
+file_menu = tk.Menu(menu_bar, tearoff=False)
+menu_bar.add_cascade(label="File", menu=file_menu)
+file_menu.add_command(label="Exit", command=root.quit)
+
+# Menu laporan
+laporan_menu = tk.Menu(menu_bar, tearoff=False)
+menu_bar.add_cascade(label="Laporan", menu=laporan_menu)
+laporan_menu.add_command(label="Laporan Penjualan", command=laporan_penjualan)
+
+# Menu log aktivitas
+log_menu = tk.Menu(menu_bar, tearoff=False)
+menu_bar.add_cascade(label="Log Aktivitas", menu=log_menu)
+log_menu.add_command(label="Lihat Log", command=lihat_log)
+
+root.mainloop()
