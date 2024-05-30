@@ -15,32 +15,32 @@ from tkinter import messagebox
 # Daftar menu dan harga
 menu = {
     "Minuman": {
-        "Es Teh": 5000,
-        "Es Jeruk": 6000,
-        "Es Campur": 10000,
-        "Es Kopi": 7000,
-        "Es Coklat": 12000
+        "Es Teh Original": 5000,
+        "Es Teh Susu": 7000,
+        "Es Teh Tarik": 7000,
+        "Es Teh Jasmine": 8000,
+        "Es Teh Lemon": 7000
     },
     "Makanan": {
-        "Nasi Goreng": 15000,
-        "Mie Goreng": 12000,
-        "Sate Ayam": 18000,
-        "Bakso": 15000,
-        "Nasi Campur": 15000
+        "Kentang Goreng": 15000,
+        "Mie Goreng": 10000,
+        "Tahu Bakso": 15000,
+        "Cireng": 10000,
+        "Gorengan": 5000
     }
 }
 
 # Stok awal
 stok = {
-    "Es Teh": 100,
-    "Es Jeruk": 80,
-    "Es Campur": 50,
-    "Es Kopi": 70,
-    "Es Coklat": 60,
-    "Nasi Goreng": 30,
+    "Es Teh Original": 100,
+    "Es Teh Susu": 80,
+    "Es Teh Tarik": 50,
+    "Es Teh Jasmine": 70,
+    "Es Teh Lemon": 60,
+    "Kentang Goreng": 30,
     "Mie Goreng": 25,
-    "Sate Ayam": 40,
-    "Bakso": 60,
+    "Tahu Bakso": 40,
+    "Cireng": 60,
     "Gorengan": 100
 }
 
@@ -195,7 +195,7 @@ def catat_log(aktivitas):
 
 # Membuat jendela utama
 root = tk.Tk()
-root.title("Kasir Minuman & Makanan")
+root.title("Es Teh Sederhana")
 root.geometry("1200x800")
 
 # Tema
@@ -286,3 +286,11 @@ menu_bar.add_cascade(label="Log Aktivitas", menu=log_menu)
 log_menu.add_command(label="Lihat Log", command=lihat_log)
 
 root.mainloop()
+   
+
+
+   
+
+
+
+
